@@ -312,35 +312,51 @@ mod test {
         // }}}
 
         let clients: Vec<HyprClient> = serde_json::from_str(data).unwrap();
-        
-        assert!(HyprClient::match_rule(&clients, "558e9243ab50", &Rule {
-            workspace: Some(WorkspaceRule::Id(2)),
-            class_regex: Some(Regex::new("^firefox$").unwrap()),
-            title_regex: Some(Regex::new("^rust.*").unwrap()),
-            ..Default::default()
-        }));
 
-        assert!(!HyprClient::match_rule(&clients, "558e928c04d0", &Rule {
-            workspace: Some(WorkspaceRule::Name("3".into())),
-            class_regex: Some(Regex::new("^QQ$").unwrap()),
-            title_regex: Some(Regex::new("^rust.*").unwrap()),
-            ..Default::default()
-        }));
+        assert!(HyprClient::match_rule(
+            &clients,
+            "558e9243ab50",
+            &Rule {
+                workspace: Some(WorkspaceRule::Id(2)),
+                class_regex: Some(Regex::new("^firefox$").unwrap()),
+                title_regex: Some(Regex::new("^rust.*").unwrap()),
+                ..Default::default()
+            }
+        ));
 
-        assert!(!HyprClient::match_rule(&clients, "lksjhaldskjfhkasljhfklajsh", &Rule {
-            workspace: Some(WorkspaceRule::Name("3".into())),
-            class_regex: Some(Regex::new("^QQ$").unwrap()),
-            title_regex: Some(Regex::new("^rust.*").unwrap()),
-            ..Default::default()
-        }));
+        assert!(!HyprClient::match_rule(
+            &clients,
+            "558e928c04d0",
+            &Rule {
+                workspace: Some(WorkspaceRule::Name("3".into())),
+                class_regex: Some(Regex::new("^QQ$").unwrap()),
+                title_regex: Some(Regex::new("^rust.*").unwrap()),
+                ..Default::default()
+            }
+        ));
 
-        assert!(HyprClient::match_rule(&clients, "558e91924520", &Rule {
-            workspace: Some(WorkspaceRule::Name("1".into())),
-            class_regex: Some(Regex::new("^kit..$").unwrap()),
-            title_regex: Some(Regex::new("^t[a-z].x.*").unwrap()),
-            floating: Some(false),
-            xwayland: Some(false),
-            ..Default::default()
-        }));
+        assert!(!HyprClient::match_rule(
+            &clients,
+            "lksjhaldskjfhkasljhfklajsh",
+            &Rule {
+                workspace: Some(WorkspaceRule::Name("3".into())),
+                class_regex: Some(Regex::new("^QQ$").unwrap()),
+                title_regex: Some(Regex::new("^rust.*").unwrap()),
+                ..Default::default()
+            }
+        ));
+
+        assert!(HyprClient::match_rule(
+            &clients,
+            "558e91924520",
+            &Rule {
+                workspace: Some(WorkspaceRule::Name("1".into())),
+                class_regex: Some(Regex::new("^kit..$").unwrap()),
+                title_regex: Some(Regex::new("^t[a-z].x.*").unwrap()),
+                floating: Some(false),
+                xwayland: Some(false),
+                ..Default::default()
+            }
+        ));
     }
 }

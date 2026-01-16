@@ -55,7 +55,6 @@ pub struct Rule {
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum WorkspaceRule {
-
     /// `id` of the workspace.
     Id(i32),
 

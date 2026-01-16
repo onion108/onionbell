@@ -202,7 +202,10 @@ impl App {
                             }
                         }
                         Err(err) => {
-                            warn!("Failed to get clients from Hyprland {}. Rules will not be matched. ", err);
+                            warn!(
+                                "Failed to get clients from Hyprland {}. Rules will not be matched. ",
+                                err
+                            );
                         }
                     }
                     let sfx_path = sfx_path.unwrap_or(self.config.sound.clone());

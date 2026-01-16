@@ -20,5 +20,5 @@ pub enum AppError {
     RodioDecoderError(#[from] rodio::decoder::DecoderError),
 
     #[error(transparent)]
-    JsonError(#[from] serde_json::Error)
+    JsonError(#[from] serde_json::Error),
 }
