@@ -6,7 +6,7 @@ use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 
 use log::{debug, trace, warn};
-use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink};
+use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
 
 use crate::config::Config;
 use crate::error::AppError;
@@ -194,11 +194,13 @@ impl App {
             match ev_type {
                 "bell" => {
                     let mut sfx_path = None;
+                    let mut volume = None;
                     match HyprClient::get_clients(&self.socket_path) {
                         Ok(clients) => {
                             for rule in &self.config.rules {
                                 if HyprClient::match_rule(&clients, data, rule) {
                                     sfx_path = Some(rule.sound.clone());
+                                    volume = Some(rule.volume);
                                     break;
                                 }
                             }
@@ -211,10 +213,11 @@ impl App {
                         }
                     }
                     let sfx_path = sfx_path.unwrap_or(self.config.sound.clone());
+                    let volume = volume.unwrap_or(self.config.volume);
 
                     // Missing sfx_path = no sound
                     if let Some(sfx_path) = sfx_path {
-                        self.play_sound(&sfx_path);
+                        self.play_sound(&sfx_path, volume);
                     }
                 }
                 _ => {
@@ -224,11 +227,13 @@ impl App {
         }
     }
 
-    fn play_sound(&mut self, sfx_path: &PathBuf) {
+    fn play_sound(&mut self, sfx_path: &PathBuf, volume: f32) {
         if let Some(data) = self.sound_map.get(sfx_path) {
             match Decoder::try_from(io::Cursor::new(data.clone())) {
                 Ok(audio) => {
-                    self.audio_stream_handle.mixer().add(audio);
+                    self.audio_stream_handle
+                        .mixer()
+                        .add(audio.amplify_normalized(volume));
                 }
                 Err(err) => {
                     warn!(
