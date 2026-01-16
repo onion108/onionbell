@@ -3,7 +3,7 @@ name = "onionbell"
 version = "0.1.0"
 edition = "2024"
 description = "A bell utility for Hyprland"
-license = "wtfpl"
+license-file = "LICENSE"
 repository = "https://codeberg.org/onion27/onionbell"
 
 [dependencies]
