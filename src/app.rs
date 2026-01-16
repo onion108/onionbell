@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env;
 use std::fs::OpenOptions;
 use std::io::{self, Read};
 use std::os::unix::net::UnixStream;
@@ -22,11 +23,17 @@ pub struct App {
 }
 
 impl App {
-    pub fn new() -> Result<App, AppError> {
-        // {{{ Initialize and Check Paths & Environment Variables
+    // {{{ Initialization Stuff
+
+    /// Initialize and check Hyprland sockets' paths.
+    /// The first `PathBuf` is the path to the `.socket.sock`, and the second one is `.socket2.sock`.
+    /// I really hope if there is a named tuple thing so I can mark them on the type, but
+    /// unfortunately there isn't; And it feels really weird to actually have a different type for
+    /// such a small thing so I keep it like that.
+    fn init_hyprland_socket_path() -> Result<(PathBuf, PathBuf), AppError> {
         trace!("Checking environment variables...");
-        let xdg_runtime = std::env::var("XDG_RUNTIME_DIR")?;
-        let hyprland_instance_signature = std::env::var("HYPRLAND_INSTANCE_SIGNATURE")?;
+        let xdg_runtime = env::var("XDG_RUNTIME_DIR")?;
+        let hyprland_instance_signature = env::var("HYPRLAND_INSTANCE_SIGNATURE")?;
         trace!(
             "xdg_runtime = {:?}, hyprland_instance_signature = {:?}",
             xdg_runtime, hyprland_instance_signature
@@ -47,57 +54,38 @@ impl App {
                 .into());
             }
         }
-        // }}}
+        Ok((socket_path, socket2_path))
+    }
 
-        // {{{ Load Configuration
-        let config_home = if let Ok(config_dir) = std::env::var("XDG_CONFIG_HOME") {
-            PathBuf::from(config_dir).join("onionbell")
-        } else {
-            if let Ok(home) = std::env::var("HOME") {
-                PathBuf::from(home).join(".config").join("onionbell")
-            } else {
-                PathBuf::from("/etc/onionbell")
-            }
-        };
+    /// Check and load config.
+    fn load_config() -> Result<Config, AppError> {
+        let config_home = env::var("XDG_CONFIG_HOME")
+            .map(PathBuf::from)
+            .or_else(|_| {
+                env::var("HOME")
+                    .map(PathBuf::from)
+                    .map(|x| x.join(".config"))
+            })
+            .map(|x| x.join("onionbell"))
+            .unwrap_or("/etc/onionbell".into());
         debug!("Config Home: {}", config_home.to_string_lossy());
 
         let config_path = config_home.join("config.toml");
-        let config = match OpenOptions::new().read(true).open(&config_path) {
-            Ok(mut f) => {
+        OpenOptions::new()
+            .read(true)
+            .open(&config_path)
+            .map_err(AppError::from)
+            .and_then(|mut f| {
                 let mut buf = String::new();
-                if let Err(err) = f.read_to_string(&mut buf) {
-                    warn!(
-                        "Failed to read configuration at {}, using default value as fallback: {}",
-                        config_path.to_string_lossy(),
-                        err
-                    );
-                    Config::default()
-                } else {
-                    match Config::from_source(&buf) {
-                        Ok(x) => x,
-                        Err(err) => {
-                            warn!(
-                                "Failed to parse configuration at {}, using default value as fallback: {}",
-                                config_path.to_string_lossy(),
-                                err
-                            );
-                            Config::default()
-                        }
-                    }
-                }
-            }
-            Err(err) => {
-                warn!(
-                    "Failed to open configuration at {}, using default value as fallback: {}",
-                    config_path.to_string_lossy(),
-                    err
-                );
-                Config::default()
-            }
-        };
-        // }}}
+                f.read_to_string(&mut buf)?;
+                Ok(Config::from_source(&buf)?)
+            })
+    }
 
-        // {{{ Initialize Audio
+    /// Initialize audio and load all audio data into memory for fast access.
+    fn init_audio(
+        config: &Config,
+    ) -> Result<(OutputStream, Sink, HashMap<PathBuf, Vec<u8>>), AppError> {
         let stream_handle = OutputStreamBuilder::open_default_stream()?;
         let sink = Sink::connect_new(&stream_handle.mixer());
         let mut sound_map = HashMap::new();
@@ -111,7 +99,7 @@ impl App {
                 match OpenOptions::new()
                     .read(true)
                     .open(sfx_path)
-                    .map_err(|e| AppError::from(e))
+                    .map_err(AppError::from)
                     .and_then(|mut x| {
                         let mut buf = Vec::new();
                         x.read_to_end(&mut buf).map(|_| buf).map_err(|e| e.into())
@@ -129,15 +117,29 @@ impl App {
                 }
             }
         }
-        // }}}
+        Ok((stream_handle, sink, sound_map))
+    }
+
+    // }}}
+
+    pub fn new() -> Result<App, AppError> {
+        let (socket_path, socket2_path) = Self::init_hyprland_socket_path()?;
+
+        let config = Self::load_config().unwrap_or_else(|err| {
+            warn!("Failed to load configuration: {}", err);
+            warn!("Will use default value as fallback. ");
+            Config::default()
+        });
+
+        let (audio_stream_handle, audio_sink, sound_map) = Self::init_audio(&config)?;
 
         Ok(App {
             socket_path,
             socket2_path,
             config,
             sound_map,
-            audio_stream_handle: stream_handle,
-            audio_sink: sink,
+            audio_stream_handle,
+            audio_sink,
         })
     }
 
