@@ -1,5 +1,7 @@
 mod serde_helpers;
 
+use crate::error::AppError;
+
 use self::serde_helpers::{default_volume, validate_volume};
 use regex::Regex;
 use serde::Deserialize;
@@ -75,8 +77,8 @@ pub enum WorkspaceRule {
 }
 
 impl Config {
-    pub fn from_source(source: &str) -> Result<Config, toml::de::Error> {
-        toml::from_str(source)
+    pub fn from_source<S: AsRef<str>>(source: S) -> Result<Config, AppError> {
+        toml::from_str(source.as_ref()).map_err(AppError::from)
     }
 }
 
@@ -89,7 +91,9 @@ mod test {
         let error = Config::from_source("volume = 100.0");
         assert!(error.is_err());
 
-        let error = error.unwrap_err();
+        let AppError::TomlDeserializationError(error) = error.unwrap_err() else {
+            unreachable!()
+        };
         assert_eq!(
             error.message(),
             "invalid value: floating point `100.0`, expected volume must be between 0.0 and 1.0"
@@ -104,7 +108,9 @@ mod test {
         );
         assert!(error.is_err());
 
-        let error = error.unwrap_err();
+        let AppError::TomlDeserializationError(error) = error.unwrap_err() else {
+            unreachable!()
+        };
         assert_eq!(
             error.message(),
             "invalid value: floating point `100.0`, expected volume must be between 0.0 and 1.0"

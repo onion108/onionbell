@@ -11,6 +11,7 @@ use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
 use crate::config::Config;
 use crate::error::AppError;
 use crate::hypr::HyprClient;
+use crate::util::reader_to_string;
 
 pub struct App {
     pub socket_path: PathBuf,
@@ -70,16 +71,12 @@ impl App {
             .unwrap_or("/etc/onionbell".into());
         debug!("Config Home: {}", config_home.to_string_lossy());
 
-        let config_path = config_home.join("config.toml");
         OpenOptions::new()
             .read(true)
-            .open(&config_path)
+            .open(config_home.join("config.toml"))
             .map_err(AppError::from)
-            .and_then(|mut f| {
-                let mut buf = String::new();
-                f.read_to_string(&mut buf)?;
-                Ok(Config::from_source(&buf)?)
-            })
+            .and_then(reader_to_string)
+            .and_then(Config::from_source)
     }
 
     /// Initialize audio and load all audio data into memory for fast access.

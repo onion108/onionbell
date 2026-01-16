@@ -8,6 +8,7 @@ use serde::Deserialize;
 use crate::config::Rule;
 use crate::config::WorkspaceRule;
 use crate::error::AppError;
+use crate::util::reader_to_string;
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -49,16 +50,9 @@ pub struct HyprWorkspace {
 
 impl HyprClient {
     pub fn get_clients<P: AsRef<Path>>(socket: P) -> Result<Vec<HyprClient>, AppError> {
-        let response;
-        {
-            let mut socket = UnixStream::connect(socket)?;
-            write!(socket, "-j/clients")?;
-
-            let mut buf = String::new();
-            socket.read_to_string(&mut buf)?;
-            response = buf;
-        }
-        Ok(serde_json::from_str(&response)?)
+        let mut socket = UnixStream::connect(socket)?;
+        write!(socket, "-j/clients")?;
+        Ok(serde_json::from_str(&reader_to_string(socket)?)?)
     }
 
     pub fn match_rule(clients: &[HyprClient], data: &str, rule: &Rule) -> bool {
