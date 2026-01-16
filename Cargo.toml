@@ -2,6 +2,9 @@
 name = "onionbell"
 version = "0.1.0"
 edition = "2024"
+description = "A bell utility for Hyprland"
+license = "wtfpl"
+repository = "https://codeberg.org/onion27/onionbell"
 
 [dependencies]
 env_logger = "0.11.8"
