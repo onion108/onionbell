@@ -7,7 +7,7 @@ fn main() -> Result<(), ExitCode> {
     #[cfg(debug_assertions)]
     {
         // We want full log in debug builds.
-        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("trace")).init();
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("trace")).format_source_path(true).init();
     }
     #[cfg(not(debug_assertions))]
     {
